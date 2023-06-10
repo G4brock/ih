@@ -2,6 +2,7 @@ import zmq, threading, time
 
 CONTEXT  = zmq.Context()
 TEMPERATURA = 0
+SERVER_ID = ["id-0001"]
 
 class GetData(threading.Thread):
     def __init__(self, name):
@@ -14,15 +15,11 @@ class GetData(threading.Thread):
         socket = CONTEXT.socket(zmq.REQ)
         socket.connect("tcp://localhost:5555")
         while True:
-            time.sleep(10)
-            print("Analisando Temperatura...")
-            socket.send("Hello".encode())
+            time.sleep(5)
+            socket.send("getTemperatura".encode())
             msg = socket.recv();
-
             TEMPERATURA = str(msg).split("'")[1]
-            print(f"Temperatura atual: {TEMPERATURA} °C")
             
-        
 
 class SendData(threading.Thread):
     def __init__(self, name):
@@ -36,7 +33,15 @@ class SendData(threading.Thread):
         socket.bind("tcp://*:5554")
         while True:
             message = socket.recv()
-            socket.send(str(TEMPERATURA).encode())
+            message = str(message).split("'")[1].split("/")
+
+            if(message[1] in SERVER_ID):
+                if(message[2] == "getTemperatura"):
+                    socket.send(str(TEMPERATURA).encode())
+                else:
+                    socket.send("Ação inválida".encode())
+            else:
+                socket.send("Servidor não identificado, retorno bloqueado.")
 
 
 def main():
@@ -45,5 +50,8 @@ def main():
 
     send.start()
     get.start()
+
+    print("Sensor funcionando.")
+
 
 main()

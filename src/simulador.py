@@ -1,6 +1,7 @@
 import zmq, time, threading
 
 UMIDADE = 29
+VARIACAOTEMP = -0.5
 
 class ServerSimulador(threading.Thread):
     def __init__(self, name):
@@ -8,14 +9,23 @@ class ServerSimulador(threading.Thread):
         self.name = name
 
     def run(self):
-        global UMIDADE
-        print("Iniciando o simulador")
+        global UMIDADE, VARIACAOTEMP
         context = zmq.Context()
         socket = context.socket(zmq.REP)
         socket.bind("tcp://*:5555")
         while True:
             message = socket.recv()
-            socket.send(str(UMIDADE).encode())
+            message = str(message).split("'")[1]
+
+            if(message == "getTemperatura"):
+                socket.send(str(UMIDADE).encode())
+            elif(message == "setTemperatura/pos"):
+                VARIACAOTEMP = -0.5
+                socket.send("Atuador desativado".encode())
+            elif(message == "setTemperatura/neg"):
+                VARIACAOTEMP = 0.5
+                socket.send(f"Atuador ativado".encode())
+
 
 class ThreadSimulador(threading.Thread):
     def __init__(self, name):
@@ -23,11 +33,12 @@ class ThreadSimulador(threading.Thread):
         self.name = name
 
     def run(self):
-        global UMIDADE
+        global UMIDADE, VARIACAOTEMP
 
         while True:
-            time.sleep(5)
-            UMIDADE -= 0.5
+            time.sleep(1)
+            UMIDADE += VARIACAOTEMP
+    
     
 def main():
     simulador = ThreadSimulador("ambiente")
@@ -35,5 +46,8 @@ def main():
 
     simulador.start()
     servidor.start()
+
+    print("Simulador Iniciado")
+
 
 main()
